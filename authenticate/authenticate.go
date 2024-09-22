@@ -12,7 +12,7 @@ import (
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
-const redirectURI = "http://localhost:8080"
+const redirectURI = "http://localhost:8080/callback"
 
 var (
 	auth  *spotifyauth.Authenticator
@@ -31,13 +31,17 @@ func init() {
 	clientID := os.Getenv("SPOTIFY_ID")
 	clientSecret := os.Getenv("SPOTIFY_SECRET")
 
-	// Initialize the Spotify authenticator with client ID and secret
-	auth = spotifyauth.New(spotifyauth.WithRedirectURL(redirectURI),
-		spotifyauth.WithClientID(clientID), spotifyauth.WithClientSecret(clientSecret),
-		spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate))
+	// Initialize Spotify authenticator
+	auth = spotifyauth.New(
+		spotifyauth.WithRedirectURL(redirectURI),
+		spotifyauth.WithClientID(clientID),
+		spotifyauth.WithClientSecret(clientSecret),
+		spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate, spotifyauth.ScopePlaylistModifyPublic, spotifyauth.ScopePlaylistModifyPrivate),
+	)
 }
 
-func StartAuth() {
+// StartAuth starts the Spotify authentication process and returns the authenticated client
+func StartAuth() *spotify.Client {
 	// Handle favicon requests
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
@@ -74,6 +78,8 @@ func StartAuth() {
 		log.Fatal(err)
 	}
 	fmt.Println("You are logged in as:", user.ID)
+
+	return client // Return the authenticated client
 }
 
 func completeAuth(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +91,7 @@ func completeAuth(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 		return
 	}
+
 	if st := r.FormValue("state"); st != state {
 		http.NotFound(w, r)
 		log.Fatalf("State mismatch: %s != %s\n", st, state)
